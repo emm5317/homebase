@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="1800">
+  <title>Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="mode-display">
+  <div id="app"></div>
+
+  <script type="module">
+    // For Pi deployment: run scripts/vendor.sh to download these locally
+    import { h, render } from 'https://esm.sh/preact@10.25.4';
+    import { useState, useEffect, useCallback, useMemo } from 'https://esm.sh/preact@10.25.4/hooks';
+    import htm from 'https://esm.sh/htm@3.1.1';
+
+    const html = htm.bind(h);
+
+    // Read display mode from query param
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode') || 'display';
+    const maxCards = params.get('max') || (mode === 'eink' ? 4 : mode === 'display' ? 6 : 15);
+    document.body.className = 'mode-' + mode;
+
+    const POLL_MS = mode === 'eink' ? 300000 : 60000;
+
+    // ---- Time helpers ----
+    function getGreeting(hour) {
+      if (hour < 12) return 'Good morning';
+      if (hour < 17) return 'Good afternoon';
+      return 'Good evening';
+    }
+
+    function formatTime(date) {
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
+    // ---- Components ----
+    function Header() {
+      const [now, setNow] = useState(new Date());
+      useEffect(() => {
+        const t = setInterval(() => setNow(new Date()), 30000);
+        return () => clearInterval(t);
+      }, []);
+
+      const timeParts = formatTime(now).split(' ');
+
+      return html`
+        <header class="header">
+          <div>
+            <div class="greeting">${getGreeting(now.getHours())}</div>
+            <div class="greeting-sub">Here's what's happening today.</div>
+          </div>
+          <div class="header-time">
+            <div class="time-display">${timeParts[0]} <span class="time-period">${timeParts[1]}</span></div>
+            <div class="time-date">${formatDate(now)}</div>
+          </div>
+        </header>
+      `;
+    }
+
+    function AlertCard({ card }) {
+      return html`
+        <div class="alert" style="--accent: ${card.color || '#e86f5a'}">
+          <div class="alert-emoji">${card.icon}</div>
+          <div class="alert-text">
+            <div class="alert-headline">${card.title}</div>
+            ${card.body && html`<div class="alert-detail">${card.body}</div>`}
+          </div>
+          ${card.subtitle && html`<div class="alert-badge">${card.subtitle}</div>`}
+        </div>
+      `;
+    }
+
+    function StatusCard({ card }) {
+      return html`
+        <div class="card card--status" style="--accent: ${card.color || '#4a90d9'}">
+          <div class="card-header">
+            <div class="card-icon" style="background: ${card.color}22">${card.icon}</div>
+            <div>
+              <div class="card-label" style="color: ${card.color}">${card.title}</div>
+              ${card.subtitle && html`<div class="card-label-sub">${card.subtitle}</div>`}
+            </div>
+          </div>
+          ${card.body && html`<p class="card-body">${card.body}</p>`}
+          ${card.metrics && card.metrics.length > 0 && html`
+            <div class="card-metrics">
+              ${card.metrics.map(m => html`
+                <div class="metric">
+                  <span class="metric-label">${m.label}</span>
+                  <span class="metric-value">${m.value}</span>
+                </div>
+              `)}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function ListCard({ card }) {
+      return html`
+        <div class="card card--list" style="--accent: ${card.color || '#5a9e78'}">
+          <div class="card-header">
+            <div class="card-icon" style="background: ${card.color}22">${card.icon}</div>
+            <div>
+              <div class="card-label" style="color: ${card.color}">${card.title}</div>
+              ${card.subtitle && html`<div class="card-label-sub">${card.subtitle}</div>`}
+            </div>
+          </div>
+          ${card.items && html`
+            <div class="list-items">
+              ${card.items.map(item => html`
+                <div class="list-item ${item.done ? 'list-item--done' : ''}">
+                  <div class="list-check"></div>
+                  <span class="list-text">${item.text}</span>
+                </div>
+              `)}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function EventCard({ card }) {
+      return html`
+        <div class="card card--event" style="--accent: ${card.color || '#8b6aae'}">
+          <div class="card-header">
+            <div class="card-icon" style="background: ${card.color}22">${card.icon}</div>
+            <div>
+              <div class="card-label" style="color: ${card.color}">${card.title}</div>
+              ${card.subtitle && html`<div class="card-label-sub">${card.subtitle}</div>`}
+            </div>
+          </div>
+          ${card.body && html`<p class="card-body">${card.body}</p>`}
+        </div>
+      `;
+    }
+
+    function InfoCard({ card }) {
+      return html`
+        <div class="card card--info" style="--accent: ${card.color || '#8a8580'}">
+          <div class="card-header">
+            <div class="card-icon" style="background: ${card.color}22">${card.icon}</div>
+            <div>
+              <div class="card-label" style="color: ${card.color}">${card.title}</div>
+              ${card.subtitle && html`<div class="card-label-sub">${card.subtitle}</div>`}
+            </div>
+          </div>
+          ${card.body && html`<p class="card-body">${card.body}</p>`}
+        </div>
+      `;
+    }
+
+    function ContextCard({ card }) {
+      if (card.type === 'alert') return html`<${AlertCard} card=${card} />`;
+      if (card.type === 'list') return html`<${ListCard} card=${card} />`;
+      if (card.type === 'event') return html`<${EventCard} card=${card} />`;
+      if (card.type === 'info') return html`<${InfoCard} card=${card} />`;
+      return html`<${StatusCard} card=${card} />`;
+    }
+
+    function Dashboard() {
+      const [cards, setCards] = useState([]);
+      const [error, setError] = useState(null);
+      const [lastUpdate, setLastUpdate] = useState(null);
+
+      const fetchCards = useCallback(async () => {
+        try {
+          const res = await fetch('/api/cards?mode=' + mode + '&max=' + maxCards);
+          if (!res.ok) throw new Error('Failed to fetch');
+          const data = await res.json();
+          setCards(data || []);
+          setLastUpdate(new Date());
+          setError(null);
+        } catch (err) {
+          setError(err.message);
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchCards();
+        const interval = setInterval(fetchCards, POLL_MS);
+        return () => clearInterval(interval);
+      }, [fetchCards]);
+
+      // Anti-burn-in: subtle pixel shift on each poll (display mode only)
+      useEffect(() => {
+        if (mode === 'display' && lastUpdate) {
+          const offset = Math.floor(Math.random() * 3);
+          document.body.style.padding = (32 + offset) + 'px ' + (36 + offset) + 'px';
+        }
+      }, [lastUpdate]);
+
+      const alerts = useMemo(() => cards.filter(c => c.type === 'alert'), [cards]);
+      const regular = useMemo(() => cards.filter(c => c.type !== 'alert'), [cards]);
+
+      return html`
+        <${Header} />
+
+        ${error && html`
+          <div class="alert" style="--accent: #e86f5a">
+            <div class="alert-emoji">⚠️</div>
+            <div class="alert-text">
+              <div class="alert-headline">Connection error</div>
+              <div class="alert-detail">Showing cached data. Will retry automatically.</div>
+            </div>
+          </div>
+        `}
+
+        ${alerts.map(card => html`<${ContextCard} key=${card.id} card=${card} />`)}
+
+        <div class="grid">
+          ${regular.map(card => html`<${ContextCard} key=${card.id} card=${card} />`)}
+        </div>
+
+        <footer class="bottom-strip">
+          <div class="bottom-left">
+            ${lastUpdate && html`
+              <div class="bottom-pill">Last updated ${formatTime(lastUpdate)}</div>
+            `}
+          </div>
+        </footer>
+      `;
+    }
+
+    render(html`<${Dashboard} />`, document.getElementById('app'));
+  </script>
+</body>
+</html>

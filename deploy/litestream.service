@@ -1,0 +1,12 @@
+[Unit]
+Description=Litestream SQLite Replication
+After=homebase.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/litestream replicate -config /etc/litestream.yml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

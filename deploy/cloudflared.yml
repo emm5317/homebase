@@ -1,0 +1,11 @@
+# Cloudflare Tunnel config — /etc/cloudflared/config.yml
+# Replace <tunnel-id> after running: cloudflared tunnel create homebase
+
+tunnel: <tunnel-id>
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: ingest.emm5317.com
+    service: http://localhost:8080
+    path: /api/ingest
+  - service: http_status:404

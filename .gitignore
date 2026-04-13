@@ -1,0 +1,19 @@
+# Secrets
+.env
+config.yaml
+
+# Data
+data/homebase.db
+data/homebase.db-wal
+data/homebase.db-shm
+
+# Build output (binary at root)
+/homebase
+*.bak
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

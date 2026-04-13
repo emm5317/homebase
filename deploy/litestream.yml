@@ -1,0 +1,13 @@
+# Litestream config — /etc/litestream.yml
+# Continuous SQLite replication to Cloudflare R2 (free tier)
+# Replace <account-id> with your Cloudflare account ID
+
+dbs:
+  - path: /opt/homebase/data/homebase.db
+    replicas:
+      - type: s3
+        bucket: homebase-backups
+        path: db
+        endpoint: https://<account-id>.r2.cloudflarestorage.com
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}

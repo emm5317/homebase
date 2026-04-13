@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+location:
+  lat: 41.8009
+  lon: -87.9331
+  timezone: America/Chicago
+
+metra:
+  route: BNSF
+  station: HINSDALE
+  destination: CUS
+
+garbage:
+  pickup_day: thursday
+  recycling_weeks: even
+  yard_waste: april-november
+  # Holiday rule: pickup shifts to Friday, unless holiday IS Friday (then regular Thursday)
+  holidays:
+    - "2026-01-01"   # New Year's Day
+    - "2026-05-25"   # Memorial Day
+    - "2026-07-04"   # Independence Day
+    - "2026-09-07"   # Labor Day
+    - "2026-11-26"   # Thanksgiving
+    - "2026-12-25"   # Christmas
+
+allowed_senders:
+  "eric@example.com": Eric
+  "kayla@example.com": Kayla
+  "grandma@example.com": Grandma

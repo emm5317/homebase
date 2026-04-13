@@ -1,0 +1,24 @@
+[Unit]
+Description=Homebase Context Engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=homebase
+Group=homebase
+ExecStart=/opt/homebase/homebase --config /opt/homebase/config.yaml
+WorkingDirectory=/opt/homebase
+Restart=always
+RestartSec=5
+WatchdogSec=60
+EnvironmentFile=/opt/homebase/.env
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/homebase/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

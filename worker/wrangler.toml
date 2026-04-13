@@ -1,0 +1,11 @@
+name = "homebase-email"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+WEBHOOK_URL = "https://ingest.emm5317.com/api/ingest"
+FALLBACK_EMAIL = "your-email@gmail.com"
+
+# Set via: npx wrangler secret put INGEST_SECRET
+# [secrets]
+# INGEST_SECRET = ""

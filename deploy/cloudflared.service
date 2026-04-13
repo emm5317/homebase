@@ -1,0 +1,14 @@
+[Unit]
+Description=Cloudflare Tunnel for Homebase
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel --config /etc/cloudflared/config.yml run homebase
+Restart=always
+RestartSec=10
+User=cloudflared
+
+[Install]
+WantedBy=multi-user.target

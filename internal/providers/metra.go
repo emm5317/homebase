@@ -35,6 +35,7 @@ type Metra struct {
 	loc             *time.Location
 	httpClient      *http.Client
 	maxDepartures   int
+	walkMinutes     int
 }
 
 func NewMetra(apiToken string, cfg config.MetraConfig, loc *time.Location) *Metra {
@@ -56,6 +57,7 @@ func NewMetra(apiToken string, cfg config.MetraConfig, loc *time.Location) *Metr
 		loc:            loc,
 		httpClient:     &http.Client{Timeout: 15 * time.Second},
 		maxDepartures:  3,
+		walkMinutes:    cfg.WalkMinutes,
 	}
 }
 
@@ -218,6 +220,15 @@ func (m *Metra) buildDepartureCards(deps []upcomingDeparture) []cards.Card {
 	now := time.Now()
 	next := deps[0]
 
+	// "Leave by" rollover: if walk time is configured and the leave-by moment
+	// has already passed, promote the next departure (one step only).
+	if m.walkMinutes > 0 && len(deps) > 1 {
+		leaveByFirst := next.departsAt.Add(-time.Duration(m.walkMinutes) * time.Minute)
+		if now.After(leaveByFirst) {
+			next = deps[1]
+		}
+	}
+
 	minutesUntil := int(next.departsAt.Sub(now).Round(time.Minute).Minutes())
 	if minutesUntil < 0 {
 		minutesUntil = 0
@@ -245,13 +256,38 @@ func (m *Metra) buildDepartureCards(deps []upcomingDeparture) []cards.Card {
 		title = fmt.Sprintf("%s → %s now", m.station, m.destination)
 	}
 
-	metrics := []cards.Metric{
-		{Label: "Depart", Value: next.departsAt.In(m.loc).Format("3:04 PM")},
-		{Label: "Status", Value: statusLabel},
+	var metrics []cards.Metric
+
+	if m.walkMinutes > 0 {
+		leaveBy := next.departsAt.Add(-time.Duration(m.walkMinutes) * time.Minute)
+		leaveByStr := leaveBy.In(m.loc).Format("3:04 PM")
+		departStr := next.departsAt.In(m.loc).Format("3:04 PM")
+		title = fmt.Sprintf("Leave by %s · %s train", leaveByStr, departStr)
+
+		// Warn if the leave-by moment is within 2 minutes of now or already past.
+		if !now.Before(leaveBy.Add(-2 * time.Minute)) {
+			status = "warning"
+			color = "#d4943a"
+		}
+
+		metrics = append(metrics, cards.Metric{Label: "Leave by", Value: leaveByStr})
 	}
-	if len(deps) > 1 {
+
+	metrics = append(metrics,
+		cards.Metric{Label: "Depart", Value: next.departsAt.In(m.loc).Format("3:04 PM")},
+		cards.Metric{Label: "Status", Value: statusLabel},
+	)
+
+	// Build the "Next" metric from all departures that are not the selected one.
+	var followingDeps []upcomingDeparture
+	for _, d := range deps {
+		if d.tripID != next.tripID {
+			followingDeps = append(followingDeps, d)
+		}
+	}
+	if len(followingDeps) > 0 {
 		var following []string
-		for _, d := range deps[1:] {
+		for _, d := range followingDeps {
 			following = append(following, d.departsAt.In(m.loc).Format("3:04 PM"))
 		}
 		metrics = append(metrics, cards.Metric{

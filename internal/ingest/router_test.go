@@ -13,6 +13,7 @@ func TestRouteByTag(t *testing.T) {
 		"reminder": "info",
 		"calendar": "event",
 		"cal":      "event",
+		"fridge":   "info",
 	}
 
 	for tag, wantType := range tests {

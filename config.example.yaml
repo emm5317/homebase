@@ -14,6 +14,7 @@ metra:
   #   https://metra.com/metra-gtfs-api
   # trip_updates_url: https://gtfspublic.metrarr.com/gtfs/public/tripupdates
   # alerts_url: https://gtfspublic.metrarr.com/gtfs/public/alerts
+  # walk_minutes: 8   # How long it takes to walk to the station; enables "Leave by H:MM" on the card
 
 garbage:
   pickup_day: thursday

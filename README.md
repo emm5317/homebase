@@ -184,6 +184,7 @@ Once configured, any allowlisted sender can email items to the dashboard:
 | `home+chore@yourdomain.com` | Subject becomes a chore |
 | `home+note@yourdomain.com` | Becomes an info card |
 | `home+reminder@yourdomain.com` | Becomes a reminder card |
+| `home+fridge@yourdomain.com` | Each item becomes a fridge card; optional `Nd` suffix sets TTL (default 3 days), color warns as expiry nears |
 | `home@yourdomain.com` (no tag) | Auto-classified by keyword matching |
 
 ## Configuration

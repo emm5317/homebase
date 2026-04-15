@@ -2,11 +2,107 @@ package ingest
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/emm5317/homebase/internal/cards"
 )
+
+// ttlPattern matches an optional trailing "Nd" suffix (e.g. "3d", "14D").
+var ttlPattern = regexp.MustCompile(`(?i)\s+(\d+)d$`)
+
+const (
+	fridgeDefaultTTL = 3
+	fridgeMaxTTL     = 30
+)
+
+// slug converts a string to a lowercase, alphanumeric-only identifier.
+func slug(s string) string {
+	var b strings.Builder
+	prev := false
+	for _, r := range strings.ToLower(s) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+			prev = false
+		} else if !prev && b.Len() > 0 {
+			b.WriteByte('-')
+			prev = true
+		}
+	}
+	result := b.String()
+	return strings.TrimRight(result, "-")
+}
+
+// parseFridgeItem parses a single item string of the form "<name>[ Nd]".
+// Returns the item name and TTL in days.
+func parseFridgeItem(raw string) (name string, ttl int) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", 0
+	}
+	ttl = fridgeDefaultTTL
+	if m := ttlPattern.FindStringSubmatchIndex(raw); m != nil {
+		digits := raw[m[2]:m[3]]
+		if n, err := strconv.Atoi(digits); err == nil && n > 0 {
+			ttl = n
+			if ttl > fridgeMaxTTL {
+				ttl = fridgeMaxTTL
+			}
+		}
+		name = strings.TrimSpace(raw[:m[0]])
+	} else {
+		name = raw
+	}
+	return name, ttl
+}
+
+func parseFridge(p Payload, senderName string) []cards.Card {
+	raw := p.Body
+	if raw == "" {
+		raw = p.Subject
+	}
+	// Normalize: commas become newlines (matches grocery parser behavior)
+	raw = strings.ReplaceAll(raw, ",", "\n")
+
+	now := time.Now()
+	var result []cards.Card
+
+	for _, line := range strings.Split(raw, "\n") {
+		name, ttl := parseFridgeItem(line)
+		if name == "" {
+			continue
+		}
+
+		expiry := now.Add(time.Duration(ttl) * 24 * time.Hour)
+
+		color := "#5a9e78" // green: ttl > 2
+		if ttl <= 1 {
+			color = "#e86f5a" // red
+		} else if ttl <= 2 {
+			color = "#d4943a" // yellow
+		}
+
+		result = append(result, cards.Card{
+			ID:         fmt.Sprintf("fridge-%s-%d", slug(name), now.Unix()),
+			Source:     "fridge",
+			Type:       "info",
+			Priority:   7,
+			Icon:       "\U0001F9C0", // 🧀
+			Title:      "Fridge: " + name,
+			Subtitle:   "Use by " + expiry.Format("Mon 1/2"),
+			Color:      color,
+			ExpiresAt:  &expiry,
+			CreatedBy:  senderName,
+			CreatedVia: "email",
+			Persistent: true,
+		})
+	}
+
+	return result
+}
 
 func parseGrocery(p Payload, senderName string) []cards.Card {
 	raw := p.Body

@@ -21,6 +21,8 @@ func Route(p Payload, senderName string) ([]cards.Card, error) {
 		return parseReminder(p, senderName), nil
 	case "calendar", "cal":
 		return parseCalendar(p, senderName), nil
+	case "fridge":
+		return parseFridge(p, senderName), nil
 	default:
 		return classifyAndRoute(p, senderName)
 	}

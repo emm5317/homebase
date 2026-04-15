@@ -23,6 +23,7 @@ metra:
   route: BNSF
   station: HINSDALE
   destination: CUS
+  walk_minutes: 8
 
 garbage:
   pickup_day: thursday
@@ -77,6 +78,9 @@ allowed_senders:
 	}
 	if cfg.IngestBearerToken != "test-token" {
 		t.Errorf("IngestBearerToken = %q", cfg.IngestBearerToken)
+	}
+	if cfg.Metra.WalkMinutes != 8 {
+		t.Errorf("Metra.WalkMinutes = %d, want 8", cfg.Metra.WalkMinutes)
 	}
 }
 

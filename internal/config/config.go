@@ -43,6 +43,7 @@ type MetraConfig struct {
 	// https://metra.com/metra-gtfs-api.
 	TripUpdatesURL string `yaml:"trip_updates_url,omitempty"`
 	AlertsURL      string `yaml:"alerts_url,omitempty"`
+	WalkMinutes    int    `yaml:"walk_minutes,omitempty"`
 }
 
 type GarbageConfig struct {

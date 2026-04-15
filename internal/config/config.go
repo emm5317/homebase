@@ -38,6 +38,11 @@ type MetraConfig struct {
 	Route       string `yaml:"route"`
 	Station     string `yaml:"station"`
 	Destination string `yaml:"destination"`
+	// Optional overrides for the Metra GTFS-RT feed URLs. When empty, the
+	// provider falls back to the public defaults documented at
+	// https://metra.com/metra-gtfs-api.
+	TripUpdatesURL string `yaml:"trip_updates_url,omitempty"`
+	AlertsURL      string `yaml:"alerts_url,omitempty"`
 }
 
 type GarbageConfig struct {

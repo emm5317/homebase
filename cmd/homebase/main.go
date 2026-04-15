@@ -73,8 +73,14 @@ func main() {
 	pp = append(pp, providers.NewGarbage(cfg.Garbage, loc))
 	slog.Info("garbage provider enabled")
 
-	// Metra and Skylight providers are stubs for now
-	// pp = append(pp, providers.NewMetra(cfg.MetraAPIKey, cfg.Metra))
+	if cfg.MetraAPIKey != "" {
+		pp = append(pp, providers.NewMetra(cfg.MetraAPIKey, cfg.Metra, loc))
+		slog.Info("metra provider enabled", "route", cfg.Metra.Route, "station", cfg.Metra.Station)
+	} else {
+		slog.Warn("METRA_API_KEY not set, metra provider disabled")
+	}
+
+	// Skylight provider is still a stub.
 	// pp = append(pp, providers.NewSkylight(cfg.SkylightEmail, cfg.SkylightPassword, cfg.SkylightFrameID))
 
 	// Start scheduler

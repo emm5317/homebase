@@ -7,9 +7,13 @@ location:
   timezone: America/Chicago
 
 metra:
-  route: BNSF
-  station: HINSDALE
-  destination: CUS
+  route: BNSF          # GTFS route_id (e.g. BNSF, UP-N, MD-W)
+  station: HINSDALE    # GTFS stop_id for the home station
+  destination: CUS     # GTFS stop_id for the ultimate destination
+  # Feed URLs are optional; the defaults target Metra's public GTFS-RT API:
+  #   https://metra.com/metra-gtfs-api
+  # trip_updates_url: https://gtfspublic.metrarr.com/gtfs/public/tripupdates
+  # alerts_url: https://gtfspublic.metrarr.com/gtfs/public/alerts
 
 garbage:
   pickup_day: thursday

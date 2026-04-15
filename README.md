@@ -17,6 +17,7 @@ This repository contains the v1 scaffold:
 - Card schema, provider interface, scheduler, and time-of-day context engine
 - **Weather provider** (OpenWeatherMap)
 - **Garbage/recycling schedule** with holiday shift logic
+- **Metra provider** (GTFS-Realtime trip updates + service alerts)
 - **Email ingestion** via Cloudflare Email Worker → `/api/ingest` webhook, with sender allowlist, plus-address routing, and keyword-based classification
 - Preact + HTM frontend (no build step) with three CSS display modes
 - SQLite (WAL mode) for persisting email-sourced cards
@@ -24,7 +25,7 @@ This repository contains the v1 scaffold:
 - Raspberry Pi provisioning script and binary update script
 - GitHub Actions workflow to cross-compile `linux/arm64` and `linux/amd64` releases
 
-Planned for v1 completion: Metra GTFS-RT provider, Skylight (calendar/chores/lists) provider. See [Roadmap](#roadmap).
+Planned for v1 completion: Skylight (calendar/chores/lists) provider. See [Roadmap](#roadmap).
 
 ## Architecture
 
@@ -138,6 +139,30 @@ Targets a Raspberry Pi 5 (4 GB or 8 GB) running Raspberry Pi OS 64-bit.
 
 To update later, run `./scripts/update.sh` on the Pi.
 
+## Metra GTFS-RT setup
+
+The Metra provider polls the public GTFS-Realtime feeds every 60 seconds for
+upcoming departures at the configured station and any active alerts on the
+configured route.
+
+1. Request an API token for your email address at
+   [metra.com/metra-gtfs-api](https://metra.com/metra-gtfs-api).
+2. Add it to `.env` as `METRA_API_KEY` (the provider authenticates via
+   `Authorization: Bearer <token>`).
+3. In `config.yaml`, set `metra.route`, `metra.station`, and
+   `metra.destination` to the GTFS `route_id` / `stop_id` values that match
+   your commute.
+
+Feed URLs default to the public endpoints but can be overridden under
+`metra:` in `config.yaml` (`trip_updates_url`, `alerts_url`).
+
+| Endpoint | Purpose |
+|---|---|
+| `https://gtfspublic.metrarr.com/gtfs/public/tripupdates` | Per-trip delay/ETA predictions |
+| `https://gtfspublic.metrarr.com/gtfs/public/alerts` | Service alerts by route/stop |
+| `https://gtfspublic.metrarr.com/gtfs/public/positions` | Live vehicle positions (unused) |
+| `https://schedules.metrarail.com/gtfs/schedule.zip` | Static GTFS schedule (for looking up route / stop IDs) |
+
 ## Email ingestion setup
 
 1. Enable Email Routing for your domain in the Cloudflare dashboard.
@@ -203,7 +228,7 @@ INGEST_BEARER_TOKEN=...
 - [x] Email ingestion with keyword classification
 - [x] Preact frontend with display/mobile/eink modes
 - [x] Pi deployment scripts and systemd units
-- [ ] Metra GTFS-RT provider
+- [x] Metra GTFS-RT provider
 - [ ] Skylight calendar/chores/lists provider
 
 **v2**

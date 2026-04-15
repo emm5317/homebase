@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -151,3 +152,184 @@ func TestAdjustPriorities(t *testing.T) {
 }
 
 func timePtr(t time.Time) *time.Time { return &t }
+
+func TestParseQuietHours(t *testing.T) {
+	t.Run("empty string → disabled", func(t *testing.T) {
+		qr, err := parseQuietHours("")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if qr != nil {
+			t.Error("expected nil for empty string")
+		}
+	})
+
+	t.Run("valid same-day range 22:00-23:00", func(t *testing.T) {
+		qr, err := parseQuietHours("22:00-23:00")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if qr == nil {
+			t.Fatal("expected non-nil")
+		}
+		if qr.crossMidnight {
+			t.Error("should not be cross-midnight")
+		}
+	})
+
+	t.Run("valid cross-midnight range 21:00-06:00", func(t *testing.T) {
+		qr, err := parseQuietHours("21:00-06:00")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if qr == nil {
+			t.Fatal("expected non-nil")
+		}
+		if !qr.crossMidnight {
+			t.Error("expected cross-midnight")
+		}
+	})
+
+	t.Run("malformed → error, disabled", func(t *testing.T) {
+		qr, err := parseQuietHours("2100-0600")
+		if err == nil {
+			t.Error("expected an error")
+		}
+		if qr != nil {
+			t.Error("expected nil on error")
+		}
+	})
+}
+
+func TestQuietHoursInRange(t *testing.T) {
+	loc := time.UTC
+	qr, _ := parseQuietHours("21:00-06:00")
+
+	tests := []struct {
+		hour int
+		min  int
+		want bool
+	}{
+		{21, 0, true},
+		{22, 0, true},
+		{0, 0, true},
+		{5, 59, true},
+		{6, 0, false},
+		{12, 0, false},
+		{20, 59, false},
+	}
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%02d:%02d", tc.hour, tc.min), func(t *testing.T) {
+			tm := time.Date(2026, 4, 15, tc.hour, tc.min, 0, 0, loc)
+			if got := qr.inRange(tm); got != tc.want {
+				t.Errorf("inRange(%02d:%02d) = %v, want %v", tc.hour, tc.min, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestQuietHoursFiltering(t *testing.T) {
+	loc := time.UTC
+
+	severeCard := cards.Card{
+		ID:         "c-severe",
+		Source:     "weather",
+		Type:       "alert",
+		Priority:   0,
+		AlertLevel: "severe",
+	}
+	prio1Card := cards.Card{
+		ID:       "c-prio1",
+		Source:   "metra",
+		Type:     "alert",
+		Priority: 1,
+	}
+	infoCard := cards.Card{
+		ID:       "c-info",
+		Source:   "meals",
+		Type:     "info",
+		Priority: 4,
+	}
+
+	t.Run("22:00 inside quiet window drops info, keeps severe and prio1", func(t *testing.T) {
+		e := &Engine{loc: loc}
+		var err error
+		e.quietRange, err = parseQuietHours("21:00-06:00")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		now := time.Date(2026, 4, 15, 22, 0, 0, 0, loc)
+		active := []cards.Card{severeCard, prio1Card, infoCard}
+
+		var result []cards.Card
+		if e.quietRange != nil && e.quietRange.inRange(now) {
+			for _, c := range active {
+				if isUrgent(c) {
+					result = append(result, c)
+				}
+			}
+		} else {
+			result = active
+		}
+
+		if len(result) != 2 {
+			t.Fatalf("expected 2 cards through quiet filter, got %d", len(result))
+		}
+		for _, c := range result {
+			if c.ID == "c-info" {
+				t.Error("info card should have been dropped")
+			}
+		}
+	})
+
+	t.Run("12:00 outside quiet window passes all cards", func(t *testing.T) {
+		e := &Engine{loc: loc}
+		var err error
+		e.quietRange, err = parseQuietHours("21:00-06:00")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		now := time.Date(2026, 4, 15, 12, 0, 0, 0, loc)
+		active := []cards.Card{severeCard, prio1Card, infoCard}
+
+		var result []cards.Card
+		if e.quietRange != nil && e.quietRange.inRange(now) {
+			for _, c := range active {
+				if isUrgent(c) {
+					result = append(result, c)
+				}
+			}
+		} else {
+			result = active
+		}
+
+		if len(result) != 3 {
+			t.Fatalf("expected all 3 cards outside quiet window, got %d", len(result))
+		}
+	})
+
+	t.Run("empty quiet_hours passes all cards at any hour", func(t *testing.T) {
+		e := &Engine{loc: loc}
+		e.quietRange, _ = parseQuietHours("")
+
+		now := time.Date(2026, 4, 15, 22, 0, 0, 0, loc)
+		active := []cards.Card{severeCard, prio1Card, infoCard}
+
+		var result []cards.Card
+		if e.quietRange != nil && e.quietRange.inRange(now) {
+			for _, c := range active {
+				if isUrgent(c) {
+					result = append(result, c)
+				}
+			}
+		} else {
+			result = active
+		}
+
+		if len(result) != 3 {
+			t.Fatalf("expected all 3 cards with no quiet hours, got %d", len(result))
+		}
+	})
+}

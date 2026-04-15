@@ -230,6 +230,9 @@ INGEST_BEARER_TOKEN=...
 - [x] Preact frontend with display/mobile/eink modes
 - [x] Pi deployment scripts and systemd units
 - [x] Metra GTFS-RT provider
+- [x] Reminders (birthdays / anniversaries)
+- [x] Meals rotation
+- [x] Quiet hours
 - [ ] Skylight calendar/chores/lists provider
 
 **v2**
@@ -239,6 +242,16 @@ INGEST_BEARER_TOKEN=...
 - [ ] Skylight write-back (push email items to the physical frame)
 - [ ] iCal feed integration (school district, etc.)
 - [ ] Per-person card profiles
+
+## Family touches
+
+Three quality-of-life features make Homebase feel like it knows your household:
+
+**Reminders** — add birthdays, anniversaries, or one-off events to `reminders:` in `config.yaml` using `MM-DD` (annual) or `YYYY-MM-DD` (one-off); a card appears up to 7 days before and escalates in color and priority as the date approaches (see `config.example.yaml` for examples).
+
+**Meals rotation** — set a flat rotation list under `meals:` with a `start_date` anchor; the dashboard shows "Tonight: X" from 3–7 PM and "Tomorrow: X" from 7–10 PM so nobody has to ask what's for dinner (see `config.example.yaml` for an example week).
+
+**Quiet hours** — set `quiet_hours: "21:00-06:00"` (or any `HH:MM-HH:MM` range, including cross-midnight) to suppress non-urgent cards overnight; only `alert_level: severe` cards and `priority <= 1` cards render during the window.
 
 ## License
 

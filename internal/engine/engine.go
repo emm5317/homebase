@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"time"
@@ -10,12 +11,71 @@ import (
 )
 
 type Engine struct {
-	store *store.Store
-	loc   *time.Location
+	store      *store.Store
+	loc        *time.Location
+	quietRange *quietTimeRange
 }
 
-func New(s *store.Store, loc *time.Location) *Engine {
-	return &Engine{store: s, loc: loc}
+// quietTimeRange holds a parsed "HH:MM-HH:MM" quiet-hours range.
+type quietTimeRange struct {
+	fromMinutes  int
+	untilMinutes int
+	crossMidnight bool
+}
+
+// parseQuietHours parses a "HH:MM-HH:MM" string into a quietTimeRange.
+// Returns nil and an error if the string is malformed; nil and nil for an
+// empty string (disabled).
+func parseQuietHours(s string) (*quietTimeRange, error) {
+	if s == "" {
+		return nil, nil
+	}
+	// Expected format: "HH:MM-HH:MM" (11 chars, hyphen at index 5)
+	if len(s) != 11 || s[5] != '-' {
+		return nil, fmt.Errorf("quiet_hours: expected HH:MM-HH:MM, got %q", s)
+	}
+	fromStr := s[:5]
+	untilStr := s[6:]
+	if !isValidHHMM(fromStr) || !isValidHHMM(untilStr) {
+		return nil, fmt.Errorf("quiet_hours: expected HH:MM-HH:MM, got %q", s)
+	}
+	from := parseTimeMinutes(fromStr)
+	until := parseTimeMinutes(untilStr)
+	return &quietTimeRange{
+		fromMinutes:   from,
+		untilMinutes:  until,
+		crossMidnight: from > until,
+	}, nil
+}
+
+// isValidHHMM checks that s looks like "HH:MM".
+func isValidHHMM(s string) bool {
+	if len(s) != 5 || s[2] != ':' {
+		return false
+	}
+	h, err1 := strconv.Atoi(s[:2])
+	m, err2 := strconv.Atoi(s[3:5])
+	return err1 == nil && err2 == nil && h >= 0 && h <= 23 && m >= 0 && m <= 59
+}
+
+// inRange returns true if the given time falls within the quiet window.
+func (q *quietTimeRange) inRange(t time.Time) bool {
+	m := t.Hour()*60 + t.Minute()
+	if q.crossMidnight {
+		// e.g. 21:00–06:00 → active when m >= 21*60 OR m < 6*60
+		return m >= q.fromMinutes || m < q.untilMinutes
+	}
+	return m >= q.fromMinutes && m < q.untilMinutes
+}
+
+// isUrgent returns true if a card should pass through quiet hours.
+func isUrgent(c cards.Card) bool {
+	return c.AlertLevel == "severe" || c.Priority <= 1
+}
+
+func New(s *store.Store, loc *time.Location, quietHours string) *Engine {
+	qr, _ := parseQuietHours(quietHours)
+	return &Engine{store: s, loc: loc, quietRange: qr}
 }
 
 type QueryParams struct {
@@ -52,6 +112,17 @@ func (e *Engine) Cards(params QueryParams) []cards.Card {
 		if e.isActive(c, now) {
 			active = append(active, c)
 		}
+	}
+
+	// Apply quiet-hours filter: during quiet window only severe/priority-0-1 cards pass.
+	if e.quietRange != nil && e.quietRange.inRange(now) {
+		var urgent []cards.Card
+		for _, c := range active {
+			if isUrgent(c) {
+				urgent = append(urgent, c)
+			}
+		}
+		active = urgent
 	}
 
 	// Apply priority adjustments based on time of day

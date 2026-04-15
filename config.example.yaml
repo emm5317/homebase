@@ -6,6 +6,10 @@ location:
   lon: -87.9331
   timezone: America/Chicago
 
+# Quiet hours: during this window only severe-level alerts render.
+# Set to "" to disable. Supports cross-midnight ranges like 21:00-06:00.
+quiet_hours: "21:00-06:00"
+
 metra:
   route: BNSF          # GTFS route_id (e.g. BNSF, UP-N, MD-W)
   station: HINSDALE    # GTFS stop_id for the home station
@@ -28,6 +32,29 @@ garbage:
     - "2026-09-07"   # Labor Day
     - "2026-11-26"   # Thanksgiving
     - "2026-12-25"   # Christmas
+
+# Rolling reminders — show a card 7/3/1 days before, and on the day itself.
+# Date format: "YYYY-MM-DD" for one-offs, "MM-DD" for annual (birthdays).
+reminders:
+  - date: "05-12"
+    text: "Mom's birthday"
+    icon: "🎂"
+  - date: "2026-06-14"
+    text: "Flights to Grandma's house"
+    icon: "✈️"
+
+# Dinner rotation — cycles day-by-day starting from start_date.
+# Shows "Tonight: X" from 3–7 PM and "Tomorrow: X" from 7–10 PM.
+meals:
+  start_date: "2026-04-13"
+  rotation:
+    - "Spaghetti & meatballs"
+    - "Chicken tacos"
+    - "Stir fry"
+    - "Pizza night"
+    - "Leftovers"
+    - "Grill night"
+    - "Soup & salad"
 
 allowed_senders:
   "eric@example.com": Eric

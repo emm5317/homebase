@@ -9,11 +9,14 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig            `yaml:"server"`
-	Location LocationConfig          `yaml:"location"`
-	Metra    MetraConfig             `yaml:"metra"`
-	Garbage  GarbageConfig           `yaml:"garbage"`
-	Senders  map[string]string       `yaml:"allowed_senders"`
+	Server     ServerConfig            `yaml:"server"`
+	Location   LocationConfig          `yaml:"location"`
+	Metra      MetraConfig             `yaml:"metra"`
+	Garbage    GarbageConfig           `yaml:"garbage"`
+	Reminders  []ReminderEntry         `yaml:"reminders"`
+	Meals      MealsConfig             `yaml:"meals"`
+	QuietHours string                  `yaml:"quiet_hours,omitempty"`
+	Senders    map[string]string       `yaml:"allowed_senders"`
 
 	// Loaded from environment variables
 	MetraAPIKey       string `yaml:"-"`
@@ -22,6 +25,17 @@ type Config struct {
 	SkylightPassword  string `yaml:"-"`
 	SkylightFrameID   string `yaml:"-"`
 	IngestBearerToken string `yaml:"-"`
+}
+
+type ReminderEntry struct {
+	Date string `yaml:"date"` // "YYYY-MM-DD" (one-off) or "MM-DD" (annual)
+	Text string `yaml:"text"` // e.g. "Mom's birthday"
+	Icon string `yaml:"icon"` // optional emoji, defaults to 🎂 if empty
+}
+
+type MealsConfig struct {
+	Rotation  []string `yaml:"rotation"`
+	StartDate string   `yaml:"start_date"` // YYYY-MM-DD anchors day 0
 }
 
 type ServerConfig struct {

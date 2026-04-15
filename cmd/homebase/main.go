@@ -80,6 +80,18 @@ func main() {
 		slog.Warn("METRA_API_KEY not set, metra provider disabled")
 	}
 
+	// Reminders provider — always registered; empty list → no-op.
+	pp = append(pp, providers.NewReminders(cfg.Reminders, loc))
+	slog.Info("reminders provider enabled", "count", len(cfg.Reminders))
+
+	// Meals provider — only when rotation and start_date are configured.
+	if len(cfg.Meals.Rotation) > 0 && cfg.Meals.StartDate != "" {
+		pp = append(pp, providers.NewMeals(cfg.Meals, loc))
+		slog.Info("meals provider enabled", "rotation_length", len(cfg.Meals.Rotation))
+	} else {
+		slog.Debug("meals disabled (no rotation configured)")
+	}
+
 	// Skylight provider is still a stub.
 	// pp = append(pp, providers.NewSkylight(cfg.SkylightEmail, cfg.SkylightPassword, cfg.SkylightFrameID))
 
@@ -90,7 +102,7 @@ func main() {
 	sched.Start(ctx)
 
 	// Build context engine
-	eng := engine.New(dataStore, loc)
+	eng := engine.New(dataStore, loc, cfg.QuietHours)
 
 	// Create ingest handler
 	ingestHandler := ingest.NewHandler(dataStore, cfg)
